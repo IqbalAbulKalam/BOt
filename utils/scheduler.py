@@ -34,5 +34,5 @@ class GapScanner:
         self.application.job_queue.run_daily(
             self.scan_and_alert,
             time=time(hour=2, minute=15), 
-            days=(0, 1, 2, 3, 4)
+            days=(0, 1, 2, 3, 4, 5, 6)
         )
