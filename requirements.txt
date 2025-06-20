@@ -1,0 +1,8 @@
+python-telegram-bot
+yfinance
+mplfinance
+pandas
+numpy
+matplotlib
+python-dotenv
+ta
