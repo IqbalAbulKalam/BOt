@@ -34,6 +34,27 @@ def save_chat_id(chat_id):
         with open(CHAT_ID_FILE, "w") as f:
             json.dump(data, f)
 
+def get_registered_chat_ids():
+    """Mengembalikan list chat_id yang tersimpan atau list kosong jika error"""
+    try:
+        with open("data/chat_ids.json", "r") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
+
+async def show_registered_ids(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handler untuk perintah /show_ids"""
+    chat_ids = get_registered_chat_ids()
+    
+    if not chat_ids:
+        await update.message.reply_text("❌ Tidak ada chat_id yang terdaftar.")
+        return
+    
+    # Format pesan
+    message = "📋 Daftar Chat ID yang Terdaftar:\n" + \
+              "\n".join([f"• {cid}" for cid in chat_ids])
+    
+    await update.message.reply_text(message)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handler untuk command /start"""
@@ -207,6 +228,7 @@ def main():
     application.add_handler(CommandHandler("addwatch", add_watch))
     application.add_handler(CommandHandler("rmwatch", remove_watch))
     application.add_handler(CommandHandler("watchlist", show_watchlist))
+    application.add_handler(CommandHandler("show_ids", show_registered_ids))
     application.add_handler(CommandHandler("help", start))
     application.add_handler(CommandHandler("cek_candle", cek_candle))
     application.add_handler(CommandHandler("gapcheck", cek_gap))
