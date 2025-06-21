@@ -34,12 +34,6 @@ def save_chat_id(chat_id):
         with open(CHAT_ID_FILE, "w") as f:
             json.dump(data, f)
 
-def load_chat_ids():
-    try:
-        with open(CHAT_ID_FILE, "r") as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return []
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handler untuk command /start"""

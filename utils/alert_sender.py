@@ -1,9 +1,18 @@
 import pandas as pd
+import json
 from telegram.constants import ParseMode
 from utils.data_fetcher import plot_candlestick
 import os
 from datetime import datetime
-from base_bot import load_chat_ids  # Pastikan ini diimpor dengan benar
+
+CHAT_ID_FILE = "data/chat_ids.json"
+
+def load_chat_ids():
+    try:
+        with open(CHAT_ID_FILE, "r") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
 
 async def send_signal_alert(context, stock_code, signal_data):
     try:
