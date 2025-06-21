@@ -3,19 +3,17 @@ from telegram.constants import ParseMode
 from utils.data_fetcher import plot_candlestick
 import os
 from datetime import datetime
+from base_bot import load_chat_ids  # Pastikan ini diimpor dengan benar
 
 async def send_signal_alert(context, stock_code, signal_data):
     try:
-        # Get chat_id from context (essential for production)
-        chat_id = (
-            getattr(context.job, 'chat_id', None) or
-            getattr(context, '_chat_id', None) or
-            getattr(context, '_user_id', None))
-        
-        if not chat_id:
-            raise ValueError("chat_id not found in context")
+        # Dapatkan semua chat_id yang terdaftar
+        chat_ids = load_chat_ids()
+        if not chat_ids:
+            print("[ERROR] Tidak ada chat_id tersimpan!")
+            return
 
-        # Extract signal information
+        # Proses data sinyal
         if isinstance(signal_data, pd.DataFrame):
             last_row = signal_data.iloc[-1]
             date = signal_data.index[-1]
@@ -23,7 +21,7 @@ async def send_signal_alert(context, stock_code, signal_data):
             last_row = signal_data
             date = signal_data.name
 
-        # Format alert message
+        # Format pesan alert
         message = (
             f"📉 <b>SINYAL TERDETEKSI</b>\n"
             f"Saham: {stock_code}\n"
@@ -32,12 +30,12 @@ async def send_signal_alert(context, stock_code, signal_data):
             f"Gap: {last_row.get('Gap_pct', 0):.2f}%\n"
             f"Akumulasi Bandar: ✅"
         )
-    
-        # Prepare chart data
+
+        # Siapkan data grafik
         plot_data = signal_data[['Open','High','Low','Close','Volume']].copy() if isinstance(signal_data, pd.DataFrame) \
                    else pd.DataFrame(signal_data).T[['Open','High','Low','Close','Volume']]
         
-        # Ensure data integrity
+        # Pastikan tipe data benar
         plot_data = plot_data.astype({
             'Open': float,
             'High': float,
@@ -46,29 +44,33 @@ async def send_signal_alert(context, stock_code, signal_data):
             'Volume': int
         })
 
-        # Generate and send chart
+        # Generate grafik
         chart_file = plot_candlestick(plot_data, stock_code)
-        if chart_file:
-            with open(chart_file, 'rb') as photo:
-                await context.bot.send_photo(
-                    chat_id=chat_id,
-                    photo=photo,
-                    caption=message,
-                    parse_mode=ParseMode.HTML
-                )
+
+        # Kirim ke semua chat_id
+        for chat_id in chat_ids:
+            try:
+                if chart_file:
+                    with open(chart_file, 'rb') as photo:
+                        await context.bot.send_photo(
+                            chat_id=chat_id,
+                            photo=photo,
+                            caption=message,
+                            parse_mode=ParseMode.HTML
+                        )
+                else:
+                    await context.bot.send_message(
+                        chat_id=chat_id,
+                        text=message,
+                        parse_mode=ParseMode.HTML
+                    )
+            except Exception as e:
+                print(f"[ERROR] Gagal kirim ke {chat_id}: {str(e)}")
+
+        # Bersihkan file grafik jika ada
+        if chart_file and os.path.exists(chart_file):
             os.remove(chart_file)
-        else:
-            await context.bot.send_message(
-                chat_id=chat_id,
-                text=message,
-                parse_mode=ParseMode.HTML
-            )
 
     except Exception as e:
         print(f"[ALERT ERROR] {str(e)}")
         print(f"[DEBUG DATA] Last row: {last_row.to_dict() if 'last_row' in locals() else 'No data'}")
-        # Optionally send error notification
-        await context.bot.send_message(
-            chat_id=chat_id,
-            text=f"⚠️ Gagal mengirim alert untuk {stock_code}: {str(e)}"
-        )

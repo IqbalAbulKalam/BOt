@@ -1,4 +1,5 @@
 import os
+import json
 import traceback
 from dotenv import load_dotenv
 from telegram import Update
@@ -14,14 +15,37 @@ from telegram.constants import ParseMode
 load_dotenv()
 TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 
+# Path untuk simpan chat_id
+CHAT_ID_FILE = "data/chat_ids.json"
+
 if not TOKEN:
     raise ValueError("Token bot tidak ditemukan! Pastikan file .env sudah dibuat")
 
+def save_chat_id(chat_id):
+    os.makedirs("data", exist_ok=True)
+    try:
+        with open(CHAT_ID_FILE, "r") as f:
+            data = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        data = []
+    
+    if chat_id not in data:
+        data.append(chat_id)
+        with open(CHAT_ID_FILE, "w") as f:
+            json.dump(data, f)
+
+def load_chat_ids():
+    try:
+        with open(CHAT_ID_FILE, "r") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handler untuk command /start"""
-    user_id = update.effective_user.id
-    context.bot_data['alert_chat_id'] = user_id  # Simpan chat_id
-    await update.message.reply_text(f"✅ Chat ID Anda ({user_id}) tersimpan untuk alert otomatis!")
+    chat_id = update.effective_chat.id
+    save_chat_id(chat_id)  # Simpan ke file
+    await update.message.reply_text("✅ Anda sekarang terdaftar untuk menerima alert saham!")
     help_text = (
         "Halo! Saya adalah Bot Asisten Saham Anda \n"
         "Perintah yang tersedia:\n"
